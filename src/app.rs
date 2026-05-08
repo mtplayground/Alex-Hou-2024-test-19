@@ -11,6 +11,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title>"Leptos TodoMVC"</title>
+                <link rel="stylesheet" href="/node_modules/todomvc-common/base.css"/>
+                <link rel="stylesheet" href="/node_modules/todomvc-app-css/index.css"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
             </head>
@@ -37,9 +40,45 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     view! {
-        <section>
-            <h1>"Hello, world!"</h1>
-            <p>"Leptos Axum SSR is initialized."</p>
+        <section class="todoapp">
+            <header class="header">
+                <h1>"todos"</h1>
+                <input class="new-todo" placeholder="What needs to be done?" autofocus/>
+            </header>
+            <section class="main">
+                <input id="toggle-all" class="toggle-all" type="checkbox"/>
+                <label for="toggle-all">"Mark all as complete"</label>
+                <ul class="todo-list"></ul>
+            </section>
+            <footer class="footer">
+                <span class="todo-count">
+                    <strong>"0"</strong>
+                    " item left"
+                </span>
+                <ul class="filters">
+                    <li>
+                        <a class="selected" href="#/">"All"</a>
+                    </li>
+                    <li>
+                        <a href="#/active">"Active"</a>
+                    </li>
+                    <li>
+                        <a href="#/completed">"Completed"</a>
+                    </li>
+                </ul>
+                <button class="clear-completed">"Clear completed"</button>
+            </footer>
         </section>
+        <footer class="info">
+            <p>"Double-click to edit a todo"</p>
+            <p>
+                "Created by "
+                <a href="http://todomvc.com">"TodoMVC template"</a>
+            </p>
+            <p>
+                "Part of "
+                <a href="http://todomvc.com">"TodoMVC"</a>
+            </p>
+        </footer>
     }
 }
