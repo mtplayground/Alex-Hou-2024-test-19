@@ -1,7 +1,8 @@
 use leptos::{ev::KeyboardEvent, html, prelude::*, task::spawn_local};
+use leptos_router::hooks::use_location;
 
 use crate::todo::{
-    server::{list_todos, toggle_all, DeleteTodo, EditTodo, ToggleTodo},
+    server::{clear_completed, list_todos, toggle_all, DeleteTodo, EditTodo, ToggleTodo},
     Filter, Todo,
 };
 
@@ -51,6 +52,20 @@ pub fn TodoMain() -> impl IntoView {
 #[component]
 pub fn TodoFooter() -> impl IntoView {
     let todos = all_todos_resource();
+    let location = use_location();
+    let clear_completed_pending = RwSignal::new(false);
+
+    Effect::new(move |_| {
+        if !clear_completed_pending.get() {
+            return;
+        }
+
+        spawn_local(async move {
+            let _ = clear_completed().await;
+            clear_completed_pending.set(false);
+            refresh_todos();
+        });
+    });
 
     view! {
         <footer
@@ -61,21 +76,52 @@ pub fn TodoFooter() -> impl IntoView {
             }
         >
             <span class="todo-count">
-                <strong>"0"</strong>
-                " item left"
+                <strong>{move || match todos.get() {
+                    Some(Ok(todos)) => todos.iter().filter(|todo| !todo.completed).count(),
+                    Some(Err(_)) | None => 0,
+                }}</strong>
+                {move || {
+                    let active_count = match todos.get() {
+                        Some(Ok(todos)) => todos.iter().filter(|todo| !todo.completed).count(),
+                        Some(Err(_)) | None => 0,
+                    };
+
+                    format!(
+                        " {} left",
+                        if active_count == 1 { "item" } else { "items" }
+                    )
+                }}
             </span>
             <ul class="filters">
                 <li>
-                    <a class="selected" href="#/">"All"</a>
+                    <a class:selected=move || location.pathname.get() == "/" href="/">"All"</a>
                 </li>
                 <li>
-                    <a href="#/active">"Active"</a>
+                    <a class:selected=move || location.pathname.get() == "/active" href="/active">
+                        "Active"
+                    </a>
                 </li>
                 <li>
-                    <a href="#/completed">"Completed"</a>
+                    <a
+                        class:selected=move || location.pathname.get() == "/completed"
+                        href="/completed"
+                    >
+                        "Completed"
+                    </a>
                 </li>
             </ul>
-            <button class="clear-completed">"Clear completed"</button>
+            <button
+                class="clear-completed"
+                class:hidden=move || match todos.get() {
+                    Some(Ok(todos)) => !todos.iter().any(|todo| todo.completed),
+                    Some(Err(_)) | None => true,
+                }
+                on:click=move |_| {
+                    clear_completed_pending.set(true);
+                }
+            >
+                "Clear completed"
+            </button>
         </footer>
     }
 }
