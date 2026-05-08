@@ -13,3 +13,4 @@ node_modules/
 .progress
 .db_decision
 .env.production
+!.env.example
