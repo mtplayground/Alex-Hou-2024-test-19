@@ -16,6 +16,8 @@ RUN cargo install --locked cargo-leptos --version ${CARGO_LEPTOS_VERSION}
 WORKDIR /app
 
 COPY Cargo.toml Cargo.lock ./
+COPY migrations ./migrations
+COPY public ./public
 COPY src ./src
 
 RUN cargo leptos build --release
@@ -23,7 +25,9 @@ RUN cargo leptos build --release
 FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates \
+    && apt-get install --yes --no-install-recommends \
+        ca-certificates \
+        curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home-dir /app --create-home app
@@ -38,6 +42,9 @@ ENV LEPTOS_SITE_ADDR=0.0.0.0:8080
 ENV RUST_LOG=info,alex_hou_2024_test_19=debug
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD ["curl", "--fail", "--silent", "http://127.0.0.1:8080/"]
 
 USER app
 
