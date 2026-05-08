@@ -102,6 +102,45 @@ pub async fn delete_todo(id: Uuid) -> Result<bool, ServerFnError> {
     }
 }
 
+#[server]
+pub async fn toggle_all() -> Result<u64, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        let repository = repository_from_context()?;
+        let todos = repository
+            .list(Filter::All)
+            .await
+            .map_err(|error| ServerFnError::new(error.to_string()))?;
+        let target_state = !todos.iter().all(|todo| todo.completed);
+
+        return repository
+            .toggle_all(target_state)
+            .await
+            .map_err(Into::into);
+    }
+
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("toggle_all is only available on the server");
+    }
+}
+
+#[server]
+pub async fn clear_completed() -> Result<u64, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        return repository_from_context()?
+            .clear_completed()
+            .await
+            .map_err(Into::into);
+    }
+
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("clear_completed is only available on the server");
+    }
+}
+
 #[cfg(feature = "ssr")]
 fn normalize_title(title: &str) -> Result<String, ServerFnError> {
     let trimmed = title.trim();
