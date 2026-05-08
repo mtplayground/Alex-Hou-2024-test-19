@@ -1,6 +1,6 @@
 use leptos::{ev::SubmitEvent, html, prelude::*};
 
-use crate::todo::server::AddTodo;
+use crate::todo::{refresh_todos, server::AddTodo};
 
 #[component]
 pub fn NewTodoInput() -> impl IntoView {
@@ -14,6 +14,8 @@ pub fn NewTodoInput() -> impl IntoView {
                 if let Some(input) = input_ref.get() {
                     input.set_value("");
                 }
+
+                refresh_todos();
             }
         }
     });

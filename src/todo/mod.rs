@@ -4,5 +4,5 @@ pub mod model;
 pub mod repository;
 pub mod server;
 
-pub use components::NewTodoInput;
+pub use components::{provide_todo_list_version, refresh_todos, NewTodoInput, TodoList};
 pub use model::{Filter, Todo};

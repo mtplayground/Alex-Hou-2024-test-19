@@ -4,7 +4,7 @@ use leptos_router::{
     StaticSegment,
 };
 
-use crate::todo::NewTodoInput;
+use crate::todo::{provide_todo_list_version, NewTodoInput, TodoList};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -41,6 +41,8 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn HomePage() -> impl IntoView {
+    provide_todo_list_version();
+
     view! {
         <section class="todoapp">
             <header class="header">
@@ -50,7 +52,7 @@ fn HomePage() -> impl IntoView {
             <section class="main">
                 <input id="toggle-all" class="toggle-all" type="checkbox"/>
                 <label for="toggle-all">"Mark all as complete"</label>
-                <ul class="todo-list"></ul>
+                <TodoList/>
             </section>
             <footer class="footer">
                 <span class="todo-count">
