@@ -14,6 +14,21 @@ impl TodoRepository {
         Self { pool }
     }
 
+    pub async fn get(&self, id: Uuid) -> Result<Option<Todo>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT id, title, completed, created_at
+            FROM todos
+            WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|row| map_todo_row(row.id, row.title, row.completed, row.created_at)))
+    }
+
     pub async fn list(&self, filter: Filter) -> Result<Vec<Todo>, sqlx::Error> {
         match filter {
             Filter::All => {
