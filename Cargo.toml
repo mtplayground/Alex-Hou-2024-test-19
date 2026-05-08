@@ -22,6 +22,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"], optio
 uuid = { version = "1", features = ["js", "serde", "v4"] }
 wasm-bindgen = { version = "0.2", optional = true }
 
+[dev-dependencies]
+serial_test = "3"
+
 [features]
 hydrate = [
     "dep:console_error_panic_hook",
