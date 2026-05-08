@@ -9,7 +9,7 @@ Leptos full-stack TodoMVC foundation using Axum for SSR/hydration and PostgreSQL
 - PostgreSQL if running locally without Docker
 - Docker and Docker Compose if using the container workflow
 
-This repository is currently set up with the app shell, runtime configuration, and container workflow. The TodoMVC domain, migrations, and SQL access are added in later issues.
+This repository contains a complete Leptos SSR TodoMVC backed by PostgreSQL. The app runs SQL migrations automatically at startup and serves both SSR HTML and the generated hydration bundle from the same Axum process.
 
 ## Environment Variables
 
@@ -40,7 +40,7 @@ cp .env.example .env
 cargo leptos watch
 ```
 
-The app binds to `http://127.0.0.1:8080` with the current default env values.
+The app binds to `http://127.0.0.1:8080` with the current default env values and applies the embedded SQL migrations before it starts serving requests.
 
 If you are working inside this Sprite environment, you can use the provisioned database URL directly:
 
@@ -55,7 +55,7 @@ cargo leptos watch
 
 The repository includes:
 
-- `Dockerfile`: multi-stage build that runs `cargo leptos build --release`
+- `Dockerfile`: multi-stage build that runs `cargo leptos build --release`, embeds the SQL migrations at compile time, and copies the generated `target/site` assets into the runtime image
 - `docker-compose.yml`: local app + PostgreSQL stack for end-to-end runs
 
 Start the stack with:
@@ -64,10 +64,26 @@ Start the stack with:
 docker compose up --build
 ```
 
+What happens during startup:
+
+- PostgreSQL starts first and must pass its healthcheck.
+- The app container connects using `DATABASE_URL`.
+- Embedded SQL migrations run automatically on boot.
+- Axum then serves SSR HTML, the WASM bundle under `/pkg`, and the vendored TodoMVC CSS under `/node_modules`.
+
 Endpoints and services:
 
 - App: `http://127.0.0.1:8080`
 - PostgreSQL: `localhost:5432`
+
+Quick verification after `docker compose up --build`:
+
+```bash
+curl -I http://127.0.0.1:8080
+curl http://127.0.0.1:8080 | rg "todoapp|node_modules/todomvc-common/base.css|pkg/alex-hou-2024-test-19.js"
+```
+
+The HTML response should include the TodoMVC shell and links to both the vendored CSS and the generated hydration assets.
 
 Stop the stack:
 
@@ -81,7 +97,7 @@ Remove the local Postgres volume too:
 docker compose down -v
 ```
 
-The Compose app service injects its own `DATABASE_URL`, `LEPTOS_SITE_ADDR`, and `RUST_LOG`, so it does not rely on your local `.env` file.
+The Compose app service injects its own `DATABASE_URL`, `LEPTOS_SITE_ADDR`, and `RUST_LOG`, so it does not rely on your local `.env` file. The database volume is persisted in `postgres_data`, so todos survive container restarts until you run `docker compose down -v`.
 
 ## Architecture Overview
 
@@ -112,8 +128,8 @@ Current runtime layout:
        v
 ┌──────────────────────────────┐
 │ PostgreSQL                   │
-│ local Docker service today   │
-│ sqlx wiring added next       │
+│ local Docker service         │
+│ sqlx repository + migrations │
 └──────────────────────────────┘
 ```
 
@@ -121,6 +137,8 @@ Repository landmarks:
 
 - `src/main.rs`: Axum server bootstrap
 - `src/config.rs`: env loading and structured logging setup
-- `src/app.rs`: root Leptos app shell
+- `src/app.rs`: routed TodoMVC UI and SSR shell
+- `src/todo/`: shared model, repository, server functions, and UI components
+- `migrations/`: embedded SQL schema migrations run on startup
 - `Dockerfile`: release container build
 - `docker-compose.yml`: local app + database stack
