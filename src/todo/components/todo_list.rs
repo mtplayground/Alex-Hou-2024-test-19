@@ -1,17 +1,88 @@
-use leptos::{ev::KeyboardEvent, html, prelude::*};
+use leptos::{ev::KeyboardEvent, html, prelude::*, task::spawn_local};
 
 use crate::todo::{
-    server::{list_todos, DeleteTodo, EditTodo, ToggleTodo},
+    server::{list_todos, toggle_all, DeleteTodo, EditTodo, ToggleTodo},
     Filter, Todo,
 };
 
 #[component]
+pub fn TodoMain() -> impl IntoView {
+    let todos = all_todos_resource();
+    let toggle_all_pending = RwSignal::new(false);
+
+    Effect::new(move |_| {
+        if !toggle_all_pending.get() {
+            return;
+        }
+
+        spawn_local(async move {
+            let _ = toggle_all().await;
+            toggle_all_pending.set(false);
+            refresh_todos();
+        });
+    });
+
+    view! {
+        <section
+            class="main"
+            class:hidden=move || match todos.get() {
+                Some(Ok(todos)) => todos.is_empty(),
+                Some(Err(_)) | None => true,
+            }
+        >
+            <input
+                id="toggle-all"
+                class="toggle-all"
+                type="checkbox"
+                prop:checked=move || match todos.get() {
+                    Some(Ok(todos)) => !todos.is_empty() && todos.iter().all(|todo| todo.completed),
+                    Some(Err(_)) | None => false,
+                }
+                on:change=move |_| {
+                    toggle_all_pending.set(true);
+                }
+            />
+            <label for="toggle-all">"Mark all as complete"</label>
+            <TodoList/>
+        </section>
+    }
+}
+
+#[component]
+pub fn TodoFooter() -> impl IntoView {
+    let todos = all_todos_resource();
+
+    view! {
+        <footer
+            class="footer"
+            class:hidden=move || match todos.get() {
+                Some(Ok(todos)) => todos.is_empty(),
+                Some(Err(_)) | None => true,
+            }
+        >
+            <span class="todo-count">
+                <strong>"0"</strong>
+                " item left"
+            </span>
+            <ul class="filters">
+                <li>
+                    <a class="selected" href="#/">"All"</a>
+                </li>
+                <li>
+                    <a href="#/active">"Active"</a>
+                </li>
+                <li>
+                    <a href="#/completed">"Completed"</a>
+                </li>
+            </ul>
+            <button class="clear-completed">"Clear completed"</button>
+        </footer>
+    }
+}
+
+#[component]
 pub fn TodoList() -> impl IntoView {
-    let todos_version = todo_list_version();
-    let todos = Resource::new(
-        move || todos_version.get(),
-        move |_| async move { list_todos(Filter::All).await },
-    );
+    let todos = all_todos_resource();
 
     view! {
         <ul class="todo-list">
@@ -177,4 +248,13 @@ pub fn refresh_todos() {
 
 fn todo_list_version() -> RwSignal<u64> {
     use_context::<RwSignal<u64>>().expect("todo list version signal missing from Leptos context")
+}
+
+fn all_todos_resource() -> LocalResource<Result<Vec<Todo>, ServerFnError>> {
+    let todos_version = todo_list_version();
+
+    LocalResource::new(move || {
+        let _ = todos_version.get();
+        async move { list_todos(Filter::All).await }
+    })
 }
