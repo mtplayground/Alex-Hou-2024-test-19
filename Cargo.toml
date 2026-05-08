@@ -13,6 +13,7 @@ dotenvy = { version = "0.15", optional = true }
 leptos = { version = "0.8" }
 leptos_axum = { version = "0.8", optional = true }
 leptos_router = { version = "0.8" }
+sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid", "chrono"], optional = true }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"], optional = true }
@@ -28,6 +29,7 @@ ssr = [
     "dep:axum",
     "dep:dotenvy",
     "dep:leptos_axum",
+    "dep:sqlx",
     "dep:tokio",
     "dep:tracing",
     "dep:tracing-subscriber",
