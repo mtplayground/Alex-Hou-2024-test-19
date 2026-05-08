@@ -1,10 +1,11 @@
 use leptos::prelude::*;
 use leptos_router::{
     components::{Route, Router, Routes},
+    hooks::use_location,
     StaticSegment,
 };
 
-use crate::todo::{provide_todo_list_version, NewTodoInput, TodoFooter, TodoMain};
+use crate::todo::{provide_todo_state, Filter, NewTodoInput, TodoFooter, TodoMain};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -33,6 +34,8 @@ pub fn App() -> impl IntoView {
             <main>
                 <Routes fallback=|| "Page not found.".into_view()>
                     <Route path=StaticSegment("") view=HomePage/>
+                    <Route path=StaticSegment("active") view=HomePage/>
+                    <Route path=StaticSegment("completed") view=HomePage/>
                 </Routes>
             </main>
         </Router>
@@ -41,7 +44,14 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn HomePage() -> impl IntoView {
-    provide_todo_list_version();
+    let location = use_location();
+    let filter = Signal::derive(move || match location.pathname.get().as_str() {
+        "/active" => Filter::Active,
+        "/completed" => Filter::Completed,
+        _ => Filter::All,
+    });
+
+    provide_todo_state(filter);
 
     view! {
         <section class="todoapp">

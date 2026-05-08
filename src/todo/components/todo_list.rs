@@ -1,10 +1,20 @@
 use leptos::{ev::KeyboardEvent, html, prelude::*, task::spawn_local};
-use leptos_router::hooks::use_location;
 
 use crate::todo::{
     server::{clear_completed, list_todos, toggle_all, DeleteTodo, EditTodo, ToggleTodo},
     Filter, Todo,
 };
+
+type AllTodosResource = Resource<Result<Vec<Todo>, ServerFnError>>;
+type VisibleTodosResource = Resource<Result<Vec<Todo>, ServerFnError>>;
+
+#[derive(Clone)]
+struct TodoState {
+    filter: Signal<Filter>,
+    refresh_version: RwSignal<u64>,
+    all_todos: AllTodosResource,
+    visible_todos: VisibleTodosResource,
+}
 
 #[component]
 pub fn TodoMain() -> impl IntoView {
@@ -52,7 +62,7 @@ pub fn TodoMain() -> impl IntoView {
 #[component]
 pub fn TodoFooter() -> impl IntoView {
     let todos = all_todos_resource();
-    let location = use_location();
+    let filter = todo_filter();
     let clear_completed_pending = RwSignal::new(false);
 
     Effect::new(move |_| {
@@ -94,18 +104,15 @@ pub fn TodoFooter() -> impl IntoView {
             </span>
             <ul class="filters">
                 <li>
-                    <a class:selected=move || location.pathname.get() == "/" href="/">"All"</a>
+                    <a class:selected=move || filter.get() == Filter::All href="/">"All"</a>
                 </li>
                 <li>
-                    <a class:selected=move || location.pathname.get() == "/active" href="/active">
+                    <a class:selected=move || filter.get() == Filter::Active href="/active">
                         "Active"
                     </a>
                 </li>
                 <li>
-                    <a
-                        class:selected=move || location.pathname.get() == "/completed"
-                        href="/completed"
-                    >
+                    <a class:selected=move || filter.get() == Filter::Completed href="/completed">
                         "Completed"
                     </a>
                 </li>
@@ -128,7 +135,7 @@ pub fn TodoFooter() -> impl IntoView {
 
 #[component]
 pub fn TodoList() -> impl IntoView {
-    let todos = all_todos_resource();
+    let todos = visible_todos_resource();
 
     view! {
         <ul class="todo-list">
@@ -283,24 +290,42 @@ fn TodoItem(todo: Todo) -> impl IntoView {
     }
 }
 
-pub fn provide_todo_list_version() {
-    provide_context(RwSignal::new(0_u64));
+pub fn provide_todo_state(filter: Signal<Filter>) {
+    let refresh_version = RwSignal::new(0_u64);
+    let all_todos = Resource::new(
+        move || refresh_version.get(),
+        move |_| async move { list_todos(Filter::All).await },
+    );
+    let visible_todos = Resource::new(
+        move || (refresh_version.get(), filter.get()),
+        move |(_, filter)| async move { list_todos(filter).await },
+    );
+
+    provide_context(TodoState {
+        filter,
+        refresh_version,
+        all_todos,
+        visible_todos,
+    });
 }
 
 pub fn refresh_todos() {
-    let todos_version = todo_list_version();
-    todos_version.update(|version| *version += 1);
+    let state = todo_state();
+    state.refresh_version.update(|version| *version += 1);
 }
 
-fn todo_list_version() -> RwSignal<u64> {
-    use_context::<RwSignal<u64>>().expect("todo list version signal missing from Leptos context")
+fn todo_filter() -> Signal<Filter> {
+    todo_state().filter
 }
 
-fn all_todos_resource() -> LocalResource<Result<Vec<Todo>, ServerFnError>> {
-    let todos_version = todo_list_version();
+fn todo_state() -> TodoState {
+    use_context::<TodoState>().expect("todo state missing from Leptos context")
+}
 
-    LocalResource::new(move || {
-        let _ = todos_version.get();
-        async move { list_todos(Filter::All).await }
-    })
+fn all_todos_resource() -> AllTodosResource {
+    todo_state().all_todos
+}
+
+fn visible_todos_resource() -> VisibleTodosResource {
+    todo_state().visible_todos
 }
