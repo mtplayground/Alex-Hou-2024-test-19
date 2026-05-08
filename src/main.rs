@@ -1,15 +1,19 @@
 #[cfg(feature = "ssr")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use alex_hou_2024_test_19::app::{shell, App};
+    use alex_hou_2024_test_19::{
+        app::{shell, App},
+        config::AppConfig,
+    };
     use axum::Router;
-    use leptos::config::get_configuration;
-    use leptos::logging::log;
     use leptos_axum::{generate_route_list, LeptosRoutes};
+    use tracing::info;
 
-    let conf = get_configuration(None)?;
-    let addr = conf.leptos_options.site_addr;
-    let leptos_options = conf.leptos_options;
+    let config = AppConfig::load()?;
+    config.init_tracing()?;
+
+    let addr = config.leptos_options.site_addr;
+    let leptos_options = config.leptos_options;
     let routes = generate_route_list(App);
 
     let app = Router::new()
@@ -20,7 +24,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fallback(leptos_axum::file_and_error_handler(shell))
         .with_state(leptos_options);
 
-    log!("listening on http://{}", &addr);
+    info!(
+        site_addr = %addr,
+        database_url_configured = !config.database_url.is_empty(),
+        "starting leptos axum server"
+    );
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app.into_make_service()).await?;
 
