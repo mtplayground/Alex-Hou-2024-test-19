@@ -8,16 +8,18 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axum = { version = "0.8", optional = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 console_error_panic_hook = { version = "0.1", optional = true }
 dotenvy = { version = "0.15", optional = true }
 leptos = { version = "0.8" }
 leptos_axum = { version = "0.8", optional = true }
 leptos_router = { version = "0.8" }
+serde = { version = "1", features = ["derive"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid", "chrono", "migrate", "macros"], optional = true }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"], optional = true }
-uuid = { version = "1", features = ["v4"], optional = true }
+uuid = { version = "1", features = ["js", "serde", "v4"] }
 wasm-bindgen = { version = "0.2", optional = true }
 
 [features]
@@ -34,7 +36,6 @@ ssr = [
     "dep:tokio",
     "dep:tracing",
     "dep:tracing-subscriber",
-    "dep:uuid",
     "leptos/ssr",
     "leptos_router/ssr",
 ]
