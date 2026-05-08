@@ -1,0 +1,78 @@
+Architecture plan for `mtplayground/Alex-Hou-2024-test-19`
+
+Goal
+Build a Leptos full-stack TodoMVC app on Axum SSR with PostgreSQL persistence, server functions for all mutations/queries, and Docker-based local/prod workflows.
+
+Workspace shape
+- Cargo workspace rooted at `/workspace`
+- `Cargo.toml`: workspace config plus shared dependency versions
+- `crates/app`: Leptos app crate used by both SSR and hydrate builds
+- `src/main.rs` in the server target: Axum bootstrap, config loading, logging, routes, and Leptos integration
+- `migrations/`: sqlx migrations
+- `style/` or `public/`: vendored TodoMVC CSS and static assets
+- `tests/`: integration tests that exercise repository behavior against PostgreSQL
+
+Suggested Rust module structure
+- `src/main.rs`: load config, init tracing, create DB pool, mount Leptos routes, provide shared context
+- `src/config.rs`: environment variable parsing and application settings
+- `src/state.rs`: app state wrapper if needed for pool/config sharing
+- `src/db.rs`: sqlx pool creation helpers
+- `src/todo/mod.rs`: feature entry point
+- `src/todo/model.rs`: shared `Todo` and `Filter` types for SSR + hydrate
+- `src/todo/repository.rs`: CRUD and bulk SQL operations
+- `src/todo/server.rs`: Leptos server functions such as `list_todos`, `add_todo`, `toggle_all`
+- `src/components/mod.rs`: UI exports
+- `src/components/new_todo.rs`
+- `src/components/todo_list.rs`
+- `src/components/todo_item.rs`
+- `src/components/toggle_all.rs`
+- `src/components/footer.rs`
+- `src/app.rs`: root app shell, router wiring, suspense/resource orchestration
+
+Shared types
+- `Todo { id, title, completed, created_at, updated_at }`
+- `Filter { All, Active, Completed }`
+- Input payloads for mutations should stay small and explicit rather than passing full `Todo` records back into writes
+- Shared types live in the app crate with serde support so both server functions and hydrated client code use the same definitions
+
+Issue dependency order
+- Foundation: #1, #2, #3, #4
+- Persistence base: #5, #6, #8
+- Data layer: #7
+- Read/write API: #9, #10, #11
+- UI shell/assets: #12
+- UI components: #13, #14, #15, #16, #17
+- Routing/state sync: #18
+- Verification: #19, #20, #21
+- Delivery polish: #22
+
+Key design decisions
+- Use a single Leptos full-stack crate layout unless cargo-leptos template generation strongly suggests a minimal split; avoid unnecessary crate fragmentation for a 22-issue sequence
+- Create the sqlx pool once at startup and provide it through Leptos/Axum context so server functions resolve dependencies without global state
+- Keep repository methods database-focused and free of UI concerns; server functions handle validation and translate repository errors into app-facing errors
+- Use route-derived `Filter` state so `/`, `/active`, and `/completed` are SSR-correct on first render
+- Prefer idempotent repository methods for bulk operations to simplify TodoMVC conformance and test coverage
+- Vendor the official TodoMVC CSS rather than reimplementing styles, limiting UI work to structure and behavior
+- Add integration tests at the repository layer before broad end-to-end coverage; this gives stable verification for the SQL contract while UI work continues
+
+Per-issue file expectations
+- #1 creates workspace, cargo-leptos config, base app/server files
+- #2 adds `config.rs` and tracing setup
+- #3 adds `Dockerfile`, `docker-compose.yml`, and likely `.dockerignore`
+- #5-#7 establish `db.rs`, migrations, and repository modules
+- #8-#18 mostly fill `todo/*`, `components/*`, and `app.rs`
+- #19-#20 add test helpers and repository/server-function tests
+- #21 adjusts behavior to exact TodoMVC expectations
+- #22 hardens the production container and documentation
+
+Primary risks to control
+- Leptos SSR/hydrate shared types must compile on both server and wasm targets
+- sqlx compile-time setup may require a clear strategy for offline mode vs live database during CI/tests
+- Router state and optimistic UI behavior can drift from server truth if mutation invalidation is not handled consistently
+
+Recommended implementation sequence across sessions
+1. Bootstrap the cargo-leptos workspace and config/logging first.
+2. Establish the database contract early: pool, migration, repository, shared model.
+3. Add server functions before deep UI work so components bind to stable interfaces.
+4. Implement UI in TodoMVC order: input, list/items, editing, bulk controls, footer, routes.
+5. Finish with repository/server tests, conformance cleanup, and production container polish.
