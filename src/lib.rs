@@ -3,8 +3,6 @@ pub mod app;
 pub mod config;
 #[cfg(feature = "ssr")]
 pub mod db;
-#[cfg(feature = "ssr")]
-pub mod todo;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]

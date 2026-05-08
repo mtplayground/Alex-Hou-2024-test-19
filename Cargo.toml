@@ -17,7 +17,6 @@ sqlx = { version = "0.8", default-features = false, features = ["postgres", "run
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"], optional = true }
-uuid = { version = "1", features = ["v4"], optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 
 [features]
@@ -34,7 +33,6 @@ ssr = [
     "dep:tokio",
     "dep:tracing",
     "dep:tracing-subscriber",
-    "dep:uuid",
     "leptos/ssr",
     "leptos_router/ssr",
 ]

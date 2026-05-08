@@ -25,7 +25,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid",
  "wasm-bindgen",
 ]
 
