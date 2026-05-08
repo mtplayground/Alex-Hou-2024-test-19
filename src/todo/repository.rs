@@ -1,25 +1,8 @@
-use sqlx::{
-    types::{
-        chrono::{DateTime, Utc},
-    },
-    PgPool,
-};
+use chrono::{DateTime, Utc};
+use sqlx::PgPool;
 use uuid::Uuid;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TodoFilter {
-    All,
-    Active,
-    Completed,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TodoRecord {
-    pub id: Uuid,
-    pub title: String,
-    pub completed: bool,
-    pub created_at: DateTime<Utc>,
-}
+use crate::todo::{Filter, Todo};
 
 #[derive(Clone)]
 pub struct TodoRepository {
@@ -31,9 +14,9 @@ impl TodoRepository {
         Self { pool }
     }
 
-    pub async fn list(&self, filter: TodoFilter) -> Result<Vec<TodoRecord>, sqlx::Error> {
+    pub async fn list(&self, filter: Filter) -> Result<Vec<Todo>, sqlx::Error> {
         match filter {
-            TodoFilter::All => {
+            Filter::All => {
                 let rows = sqlx::query!(
                     r#"
                     SELECT id, title, completed, created_at
@@ -49,7 +32,7 @@ impl TodoRepository {
                     .map(|row| map_todo_row(row.id, row.title, row.completed, row.created_at))
                     .collect())
             }
-            TodoFilter::Active => {
+            Filter::Active => {
                 let rows = sqlx::query!(
                     r#"
                     SELECT id, title, completed, created_at
@@ -66,7 +49,7 @@ impl TodoRepository {
                     .map(|row| map_todo_row(row.id, row.title, row.completed, row.created_at))
                     .collect())
             }
-            TodoFilter::Completed => {
+            Filter::Completed => {
                 let rows = sqlx::query!(
                     r#"
                     SELECT id, title, completed, created_at
@@ -86,7 +69,7 @@ impl TodoRepository {
         }
     }
 
-    pub async fn create(&self, title: &str) -> Result<TodoRecord, sqlx::Error> {
+    pub async fn create(&self, title: &str) -> Result<Todo, sqlx::Error> {
         let id = Uuid::new_v4();
         let row = sqlx::query!(
             r#"
@@ -112,7 +95,7 @@ impl TodoRepository {
         &self,
         id: Uuid,
         completed: bool,
-    ) -> Result<Option<TodoRecord>, sqlx::Error> {
+    ) -> Result<Option<Todo>, sqlx::Error> {
         let row = sqlx::query!(
             r#"
             UPDATE todos
@@ -129,11 +112,7 @@ impl TodoRepository {
         Ok(row.map(|row| map_todo_row(row.id, row.title, row.completed, row.created_at)))
     }
 
-    pub async fn update_title(
-        &self,
-        id: Uuid,
-        title: &str,
-    ) -> Result<Option<TodoRecord>, sqlx::Error> {
+    pub async fn update_title(&self, id: Uuid, title: &str) -> Result<Option<Todo>, sqlx::Error> {
         let row = sqlx::query!(
             r#"
             UPDATE todos
@@ -193,8 +172,8 @@ impl TodoRepository {
     }
 }
 
-fn map_todo_row(id: Uuid, title: String, completed: bool, created_at: DateTime<Utc>) -> TodoRecord {
-    TodoRecord {
+fn map_todo_row(id: Uuid, title: String, completed: bool, created_at: DateTime<Utc>) -> Todo {
+    Todo {
         id,
         title,
         completed,
