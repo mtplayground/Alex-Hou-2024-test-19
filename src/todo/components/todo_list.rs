@@ -1,4 +1,5 @@
 use leptos::{ev::KeyboardEvent, html, prelude::*, task::spawn_local};
+use leptos_router::components::A;
 
 use crate::todo::{
     server::{clear_completed, list_todos, toggle_all, DeleteTodo, EditTodo, ToggleTodo},
@@ -104,17 +105,28 @@ pub fn TodoFooter() -> impl IntoView {
             </span>
             <ul class="filters">
                 <li>
-                    <a class:selected=move || filter.get() == Filter::All href="/">"All"</a>
+                    <A
+                        href="/"
+                        attr:class=move || if filter.get() == Filter::All { "selected" } else { "" }
+                    >
+                        "All"
+                    </A>
                 </li>
                 <li>
-                    <a class:selected=move || filter.get() == Filter::Active href="/active">
+                    <A
+                        href="/active"
+                        attr:class=move || if filter.get() == Filter::Active { "selected" } else { "" }
+                    >
                         "Active"
-                    </a>
+                    </A>
                 </li>
                 <li>
-                    <a class:selected=move || filter.get() == Filter::Completed href="/completed">
+                    <A
+                        href="/completed"
+                        attr:class=move || if filter.get() == Filter::Completed { "selected" } else { "" }
+                    >
                         "Completed"
-                    </a>
+                    </A>
                 </li>
             </ul>
             <button
@@ -198,6 +210,7 @@ fn TodoItem(todo: Todo) -> impl IntoView {
             if is_editing.get() {
                 if let Some(input) = edit_input_ref.get() {
                     let _ = input.focus();
+                    let _ = input.set_selection_range(0, input.value().len() as u32);
                 }
             }
         }
