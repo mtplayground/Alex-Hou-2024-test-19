@@ -1,5 +1,10 @@
 target/
 node_modules/
+!public/node_modules/
+!public/node_modules/todomvc-app-css/
+!public/node_modules/todomvc-app-css/index.css
+!public/node_modules/todomvc-common/
+!public/node_modules/todomvc-common/base.css
 .gh_token
 .claude/
 .database_url
