@@ -4,6 +4,8 @@ use leptos_router::{
     StaticSegment,
 };
 
+use crate::todo::NewTodoInput;
+
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
@@ -43,7 +45,7 @@ fn HomePage() -> impl IntoView {
         <section class="todoapp">
             <header class="header">
                 <h1>"todos"</h1>
-                <input class="new-todo" placeholder="What needs to be done?" autofocus/>
+                <NewTodoInput/>
             </header>
             <section class="main">
                 <input id="toggle-all" class="toggle-all" type="checkbox"/>
