@@ -1,7 +1,7 @@
-use leptos::prelude::*;
+use leptos::{ev::KeyboardEvent, html, prelude::*};
 
 use crate::todo::{
-    server::{list_todos, DeleteTodo, ToggleTodo},
+    server::{list_todos, DeleteTodo, EditTodo, ToggleTodo},
     Filter, Todo,
 };
 
@@ -34,6 +34,12 @@ pub fn TodoList() -> impl IntoView {
 fn TodoItem(todo: Todo) -> impl IntoView {
     let toggle_todo = ServerAction::<ToggleTodo>::new();
     let delete_todo = ServerAction::<DeleteTodo>::new();
+    let edit_todo = ServerAction::<EditTodo>::new();
+    let edit_input_ref = NodeRef::<html::Input>::new();
+    let skip_blur_save = RwSignal::new(false);
+    let original_title = todo.title.clone();
+    let (is_editing, set_is_editing) = signal(false);
+    let (draft_title, set_draft_title) = signal(original_title.clone());
 
     Effect::new({
         let toggle_todo = toggle_todo.clone();
@@ -53,11 +59,57 @@ fn TodoItem(todo: Todo) -> impl IntoView {
         }
     });
 
+    Effect::new({
+        let edit_todo = edit_todo.clone();
+        move |_| {
+            if matches!(edit_todo.value().get(), Some(Ok(_))) {
+                refresh_todos();
+            }
+        }
+    });
+
+    Effect::new({
+        let edit_input_ref = edit_input_ref.clone();
+        move |_| {
+            if is_editing.get() {
+                if let Some(input) = edit_input_ref.get() {
+                    let _ = input.focus();
+                }
+            }
+        }
+    });
+
     let toggle_id = todo.id;
     let delete_id = todo.id;
+    let edit_id = todo.id;
+
+    let save_edit = Callback::new({
+        let original_title = original_title.clone();
+        move |_| {
+            let trimmed_title = draft_title.get_untracked().trim().to_string();
+            set_is_editing.set(false);
+
+            if trimmed_title.is_empty() {
+                delete_todo.dispatch(DeleteTodo { id: delete_id });
+            } else if trimmed_title != original_title {
+                edit_todo.dispatch(EditTodo {
+                    id: edit_id,
+                    title: trimmed_title,
+                });
+            }
+        }
+    });
+
+    let cancel_edit = Callback::new({
+        let original_title = original_title.clone();
+        move |_| {
+            set_draft_title.set(original_title.clone());
+            set_is_editing.set(false);
+        }
+    });
 
     view! {
-        <li class:completed=todo.completed>
+        <li class:completed=todo.completed class:editing=move || is_editing.get()>
             <div class="view">
                 <input
                     class="toggle"
@@ -67,7 +119,14 @@ fn TodoItem(todo: Todo) -> impl IntoView {
                         toggle_todo.dispatch(ToggleTodo { id: toggle_id });
                     }
                 />
-                <label>{todo.title}</label>
+                <label
+                    on:dblclick=move |_| {
+                        set_draft_title.set(original_title.clone());
+                        set_is_editing.set(true);
+                    }
+                >
+                    {todo.title}
+                </label>
                 <button
                     class="destroy"
                     on:click=move |_| {
@@ -75,6 +134,34 @@ fn TodoItem(todo: Todo) -> impl IntoView {
                     }
                 ></button>
             </div>
+            <input
+                node_ref=edit_input_ref
+                class="edit"
+                prop:value=move || draft_title.get()
+                on:input=move |event| {
+                    set_draft_title.set(event_target_value(&event));
+                }
+                on:blur=move |_| {
+                    if skip_blur_save.get_untracked() {
+                        skip_blur_save.set(false);
+                    } else {
+                        save_edit.run(());
+                    }
+                }
+                on:keydown=move |event: KeyboardEvent| match event.key().as_str() {
+                    "Enter" => {
+                        event.prevent_default();
+                        skip_blur_save.set(true);
+                        save_edit.run(());
+                    }
+                    "Escape" => {
+                        event.prevent_default();
+                        skip_blur_save.set(true);
+                        cancel_edit.run(());
+                    }
+                    _ => {}
+                }
+            />
         </li>
     }
 }
